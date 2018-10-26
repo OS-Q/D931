@@ -10,7 +10,9 @@ linux系统硬件环境搭建
 
 ####  Raspbian
 
-树莓派官方深度定制的硬件驱动与软件程序，官方推荐系统。如果你第一次使用树莓派，请下载这个。Debian的软件策略偏保守，稳定第一，升级是次要的。
+树莓派官方深度定制的硬件驱动与软件程序，树莓派官方推荐的Linux系统版本。Raspbian基于Debian发行版本，所以软件策略偏保守，系统以稳定第一。
+
+Raspbian主要运行于开源硬件树莓派上，拥有丰富的软硬件资源
 
 http://downloads.raspberrypi.org/raspbian_latest
 
@@ -18,7 +20,7 @@ http://downloads.raspberrypi.org/raspbian_latest
 
 #### Armbian
 
-Armbian是轻量级的Debian系统和为ARM开发板专门发行并重新编译的Ubuntu系统，Armbian使用重新编译的Debian Wheezy，Jessie或Ubuntu。
+Armbian是轻量级的Debian系统，是为ARM开发板专门发行并重新编译的Ubuntu系统，Armbian使用重新编译的Debian Wheezy，Jessie或Ubuntu。
 
 - 全志A10, A20, A31, H3, A64
 
@@ -42,9 +44,9 @@ https://www.armbian.com/
 
 #### RISC OS
 
-RISC OS是一个最初由剑桥的Acorn计算机公司（ARM 公司的前身）于 1987 年设计的操作系统，专门被设计为在 ARM 芯片上运行。对于现在流行的 RISC 架构ARM体系来说，应该算是最为精练的操作系统。
+RISC OS是一个最初由剑桥Acorn计算机公司（ARM 公司前身）于1987专门设计在ARM芯片上运行。对于现在流行的RISC架构ARM体系来说算是最为精练的操作系统。
 
-1999年1月，Acorn 正式停止对该操作系统的开发工作，RISC OS 陆续被出售或被授权给了 RISCOS Ltd、Pace Micro Technology 和 Castle Technology 等公司。
+1999年1月，Acorn正式停止对该操作系统的开发工作，RISC OS 陆续被出售或被授权给了 RISCOS Ltd、Pace Micro Technology 和 Castle Technology 等公司。
 
 2016年，Castle Technology 在一个部分免费的许可下对外发布 RISC OS 源码，允许非商业免费使用，商业用户需向其支付版税。
 
@@ -93,10 +95,11 @@ https://github.com/orangepi-xunlong/OrangePiRDA_uboot.git
 
 ### Allwinner
 
-全志芯片的Linux系统版本，可以在全志的相关芯片上运行。
+全志芯片的Linux系统版本，可以在全志的芯片上运行
 
 http://linux-sunxi.org/Linux_Kernel
 
+https://github.com/linux-sunxi
 
 
 
