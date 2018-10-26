@@ -1,10 +1,10 @@
 ﻿[![sites](docs/os-q.png)](http://www.os-q.com)
 
-# linux (http://www.os-q.com)
+# linux (www.OS-Q.com)
 
 ### 简介
 
-边缘嵌入式设备linux系统
+linux系统硬件环境搭建
 
 ---
 
@@ -65,7 +65,7 @@ https://www.riscosopen.org/content/
 
 ### OpenWrt
 
-针对嵌入式设备的 Linux 操作系统。它完全取代了厂商提供的各种无线路由器和非网络设备的固件。
+针对嵌入式设备的 Linux 操作系统。它完全取代了厂商提供的各种无线路由器和非网络设备的固件
 
 https://downloads.openwrt.org/releases/
 
@@ -73,7 +73,7 @@ https://downloads.openwrt.org/releases/
 
 ### rockchip-linux
 
-
+瑞星微的Linux版本，可以在瑞星微的芯片上运行
 
 https://github.com/rockchip-linux/kernel.git
 
@@ -81,7 +81,7 @@ https://github.com/rockchip-linux/kernel.git
 
 ### RDA
 
-RDA8810 SOC的Linux系统
+RDA SOC的Linux系统版本，RDA8810 高性价比SOC
 
 https://github.com/orangepi-xunlong/OrangePiRDA_scripts.git
 
@@ -93,7 +93,7 @@ https://github.com/orangepi-xunlong/OrangePiRDA_uboot.git
 
 ### Allwinner
 
-全志芯片的Linux系统
+全志芯片的Linux系统版本，可以在全志的相关芯片上运行。
 
 http://linux-sunxi.org/Linux_Kernel
 
