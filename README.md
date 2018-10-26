@@ -12,9 +12,17 @@
 
 
 
-rockchip-linux
+### RK3399
 
 https://github.com/rockchip-linux/kernel.git
+
+### RDA8810
+
+https://github.com/orangepi-xunlong/OrangePiRDA_scripts.git
+
+https://github.com/orangepi-xunlong/OrangePiRDA_kernel.git
+
+https://github.com/orangepi-xunlong/OrangePiRDA_uboot.git
 
 ---
 
