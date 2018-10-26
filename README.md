@@ -1,10 +1,10 @@
 ﻿[![sites](docs/os-q.png)](http://www.os-q.com)
 
-# linux
+# linux (http://www.os-q.com)
 
 ### 简介
 
-边缘嵌入式linux设备的系统编译和环境配置
+边缘嵌入式设备linux系统
 
 ---
 
@@ -12,10 +12,11 @@
 
 
 
+rockchip-linux
+
+https://github.com/rockchip-linux/kernel.git
 
 ---
 
 ### 说明
-
-2018-10-17: 创建工程
 
