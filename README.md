@@ -2,9 +2,14 @@
 
 # linux (www.OS-Q.com)
 
+https://github.com/OS-Q/linux.git
+
 ### 简介
 
 linux系统硬件环境搭建
+
+内核仓库
+https://github.com/torvalds/linux.git
 
 ---
 
