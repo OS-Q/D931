@@ -1,14 +1,15 @@
-﻿[![sites](docs/os-q.png)](http://www.os-q.com)
-
-# linux (www.OS-Q.com)
-
-https://github.com/OS-Q/linux.git
-
-### 简介
+﻿# [linux](https://github.com/OS-Q/linux) 
 
 linux系统硬件环境搭建
 
-内核仓库
+[![sites](OS-Q/OS-Q.png)](http://www.OS-Q.com)
+
+#### 更多可访问 www.OS-Q.com
+
+---
+
+### linux内核
+
 https://github.com/torvalds/linux.git
 
 ---
@@ -43,7 +44,6 @@ Armbian是轻量级的Debian系统，是为ARM开发板专门发行并重新编�
 
 
 https://www.armbian.com/
-
 
 ---
 
