@@ -1,53 +1,62 @@
-﻿# M9:[深度学习](https://github.com/OS-Q/M9) 
-
-嵌入式边缘深度学习节点
+﻿# M9：[概率分析](https://github.com/OS-Q/M9) 
 
 [![sites](OS-Q/OS-Q.png)](http://www.OS-Q.com)
 
-#### 数据处理：[M8](https://github.com/OS-Q/M8)
+#### 归属设备体系：[Q3](https://github.com/OS-Q/Q3)
 
-#### 信息安全：[M7](https://github.com/OS-Q/M7)
+#### 关于系统架构：[OS-Q](https://github.com/OS-Q/OS-Q)
 
-#### 边缘计算：[Q3](https://github.com/OS-Q/Q1)
+## [节点描述](https://github.com/OS-Q/M9/wiki) 
 
-#### 系统架构：[OS-Q](https://github.com/OS-Q/OS-Q)
+M9概率分析节点，用于分析不确定事件
 
----
+### [共用资源](https://github.com/OS-Q/M9/wiki/src) 
 
-## [描述](https://github.com/OS-Q/M9/wiki) 
+#### 前置准备
 
-深度学习部署节点
-
-#### common
 
 
 
 ---
 
-## 硬件单元
+边缘设备命名规则：体系 Q[1,4] > 节点 M[1,12] > 平台 W[1,52] > 设备 D[1,365]。
 
-基于高性能处理器专用平台
+## [包含平台](https://github.com/OS-Q/M9/wiki/index) 
 
-#### [W9平台](https://github.com/OS-Q/W9)
+#### W36：[聚类分析](https://github.com/OS-Q/W36)
 
-高精度性驱动控制，具有极高的输入输出精度
 
-#### [W10平台](https://github.com/OS-Q/W10)
 
-高实时性驱动控制，具有很好的时间性能
+#### W37：[特征提取](https://github.com/OS-Q/W37)
 
-#### [W11平台](https://github.com/OS-Q/W11)
 
-高安全性驱动控制，具有很强大的安全保障能力
 
-#### [W12平台](https://github.com/OS-Q/W12)
+#### W38：[特征模仿](https://github.com/OS-Q/W38)
 
-高同步性驱动控制，可以控制多设备同步联动
 
+
+#### W39：[概率分布](https://github.com/OS-Q/W39)
+
+
+
+
+## [同级节点](https://github.com/OS-Q/M7/wiki/index)
+
+#### M7：[模式识别](https://github.com/OS-Q/M7)
+
+模式识别节点，通过既定模式进行判断
+ 
+#### M8：[过程匹配](https://github.com/OS-Q/M8) 
+
+过程匹配节点，添加顺序特征，具有时间变量
+
+#### -> M9：[概率分析](https://github.com/OS-Q/M9)
+
+概率判定节点，没有既定的判断条件和目标，通过概率获得结论
 
 ---
 
-###  锻造最美之器
-
-###  www.OS-Q.com   |   qitas@qitas.cn
+###  [Q redefined the scope of Operation System](http://www.OS-Q.com)
+###  qitas@qitas.cn
+###  2018-11-29
 
