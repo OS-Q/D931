@@ -34,6 +34,6 @@
     * M5：[通信节点](https://github.com/OS-Q/M5)
     * M6：[通信网关](https://github.com/OS-Q/M6)
 
-### [OS-Q : Open Solutions & Open Sources](http://www.OS-Q.com/M4)
+### [OS-Q : Open Solutions & Open Source](http://www.OS-Q.com/M4)
 ####  2019-8-17
 
