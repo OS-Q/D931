@@ -1,0 +1,8 @@
+{
+    "name": "C04",
+    "type": "compiler",
+    "description": "Ninja",
+    "system": "*",
+    "url":"https://github.com/OS-Q/C04",
+    "version": "1.0.0"
+}
