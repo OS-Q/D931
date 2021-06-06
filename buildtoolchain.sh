@@ -1,0 +1,581 @@
+#!/bin/bash
+# Copyright (c) 2014-2020, A.Haarer, All rights reserved. LGPLv3
+
+# build 68k cross toolchain based on gcc
+# set the number of make jobs as appropriate for build machine
+# set the path after installation : export PATH=/opt/crosschain/bin:$PATH
+
+# tested on host platforms : msys2 64bit on windows 10, debian 10.6
+
+# usage :
+#    pass operating system as first parameter "linux" or "windows"
+
+# links:
+#   http://www.mikrocontroller.net/articles/GCC_M68k
+#   https://gcc.gnu.org/install/index.html
+#   https://gcc.gnu.org/install/prerequisites.html
+#   https://gcc.gnu.org/wiki/FAQ#configure
+#   http://www.msys2.org/
+
+
+# Tips:
+# to speed up things:  chose a location without
+# - indexing (dont use windows home dir )
+# - virus scanner ( add exclusion, or stop scanner)
+#
+# chose a number of make jobs #number of cores + 1 to make use of all computer resources
+#
+# some sh versions dont like the () after functions - call the script using bash helps
+#
+
+#first parameter: operating system to build for
+OS=$1
+
+#second parameter : desired target architecture
+TARGETARCHITECTURE=$2
+
+#third parameter : desired action ()
+ACTION=$3
+
+# check parameters
+if [[ "$OS" = "windows" || "$OS" = "linux" || "$OS" = "raspian" ]]; then
+  echo ""
+else
+  echo "os not supported $OS ! use one of linux , windows or raspian"
+  exit 1
+fi
+
+if [[ "$TARGETARCHITECTURE" = "arm-none-eabi" || "$TARGETARCHITECTURE" = "m68k-elf"  || "$TARGETARCHITECTURE" = "avr" ]]; then
+  echo ""
+else
+  echo "architecture not supported $TARGETARCHITECTURE ! use one of arm-none-eabi, m68k-elf or avr"
+  exit 1
+fi
+
+
+#define package versions
+BINUTILS="binutils-2.35"
+GCCVER="gcc-10.2.0"
+AVRLIBVER="avr-libc-2.0.0"
+NEWLIBVER="newlib-3.3.0"
+GDBVER="gdb-10.1"
+
+#set the number of parallel makes
+MAKEJOBS=16
+
+# -------------------------------------- derived globals -----------------------------------
+ROOTDIR=`pwd`
+LOGFILE="$ROOTDIR/buildlog.txt"
+HOSTINSTALLPATH="$ROOTDIR/toolchain-$TARGETARCHITECTURE-current"
+
+export PATH=$HOSTINSTALLPATH/bin:$PATH
+
+# -------------------------------------- functions -----------------------------------------
+
+NOCOLOR='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+
+function log_msg () {
+	local logline="`date` $1"
+	echo -e "${GREEN}$logline${NOCOLOR}" >> $LOGFILE
+	echo -e "${GREEN}$logline${NOCOLOR}"
+}
+
+function log_err () {
+	local logline="`date` $1"
+	echo -e "${RED}$logline${NOCOLOR}" >> $LOGFILE
+	echo -e "${RED}$logline${NOCOLOR}"
+}
+
+function prepare_source () {
+    local BASEURL=$1
+    local SOURCENAME=$2
+    local ARCHTYPE=$3
+
+    pushd $ROOTDIR/cross-toolchain > /dev/null
+
+    if [ "$ARCHTYPE" = "git" ]; then
+        if [ ! -f $SOURCENAME.$ARCHTYPE ]; then
+            log_msg " cloning $BASEURL"
+            git clone $BASEURL
+        else
+            log_msg " pulling update from $BASEURL"
+            cd $SOURCENAME
+            git pull
+        fi
+    else
+        if [ ! -f $SOURCENAME.$ARCHTYPE ]; then
+            log_msg " downloading $SOURCENAME"
+            wget $BASEURL/$SOURCENAME.$ARCHTYPE
+            log_msg " downloading $SOURCENAME finished"
+        else
+            log_msg " downloading $SOURCENAME skipped"
+        fi
+    fi
+
+    if [ ! -d $SOURCENAME ]; then
+        log_msg " unpacking $SOURCENAME"
+        if [ "$ARCHTYPE" == "tar.bz2" ]; then
+            tar -xjf $SOURCENAME.$ARCHTYPE
+        elif [ "$ARCHTYPE" = "tar.gz" ]; then
+            tar -xzf $SOURCENAME.$ARCHTYPE
+        elif [ "$ARCHTYPE" = "tar.xz" ]; then
+            tar -xJf $SOURCENAME.$ARCHTYPE
+        elif [ "$ARCHTYPE" = "zip" ]; then
+            unzip $SOURCENAME.$ARCHTYPE
+        elif [ "$ARCHTYPE" = "git" ]; then
+            echo "" #nothing to do for git
+        else
+            log_err " !!!!! unknown archive format"
+            exit 1
+        fi
+        log_msg " unpacking $SOURCENAME finished"
+    else
+        log_msg " unpacking $SOURCENAME skipped"
+    fi
+    cd $SOURCENAME
+
+    if [ ! -d cross-chain-$TARGETARCHITECTURE-obj ]; then
+        mkdir cross-chain-$TARGETARCHITECTURE-obj
+    fi
+
+    popd > /dev/null
+
+}
+
+function conf_compile_source () {
+    local SOURCEPACKAGE=$1
+    local DETECTFILE=$2
+    local CONFIGURESTRING=$3
+
+    [ ! -d $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj ] && mkdir $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj
+
+    pushd $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj > /dev/null
+
+    log_msg "COMPILE sourcepackage= $SOURCEPACKAGE"
+    log_msg "COMPILE detect file= $DETECTFILE"
+
+    if [ ! -f config.status ]; then
+        log_msg "configuring $SOURCEPACKAGE"
+        ../configure $CONFIGURESTRING 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.log || exit 1
+        log_msg "configuring $SOURCEPACKAGE finished"
+    else
+        log_msg "configuring $SOURCEPACKAGE skipped"
+    fi
+    
+    if [ ! -f $DETECTFILE ]; then
+
+        log_msg "building $SOURCEPACKAGE"
+        make -j $MAKEJOBS 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.log || exit 1
+        if [ $? -eq 0 ]; then
+            log_msg "building $SOURCEPACKAGE finished"
+        else
+            log_err "building $SOURCEPACKAGE failed"
+        fi
+
+        log_msg "install $SOURCEPACKAGE"
+        install_package
+        log_msg "install $SOURCEPACKAGE finished"
+    else
+        log_msg "compiling and install $SOURCEPACKAGE skipped"
+    fi
+    popd > /dev/null
+}
+
+
+#function to install package
+function install_package () {
+    make install
+    if [ $? -eq 0 ]; then
+        log_msg "install finished"
+    else
+        log_err "install failed"
+    fi
+}
+
+function purge_pkg () {
+    local PACKAGE=$1
+    [ -d $ROOTDIR/cross-toolchain/$PACKAGE ] && rm -rf $ROOTDIR/cross-toolchain/$PACKAGE
+}
+
+function download_all_pkg () {
+    [ ! -d  $ROOTDIR/cross-toolchain ] &&	mkdir  $ROOTDIR/cross-toolchain
+
+    prepare_source http://ftp.gnu.org/gnu/binutils  $BINUTILS tar.bz2
+
+    if [ "$TARGETARCHITECTURE" = "avr" ]; then
+        prepare_source http://download.savannah.gnu.org/releases/avr-libc $AVRLIBVER tar.bz2
+
+    	log_msg "patching binutils"
+        pushd $ROOTDIR/cross-toolchain/$BINUTILS > /dev/null
+    	patch  -p0 -i ../../avr_binutils.patch
+        popd > /dev/null
+    else
+        prepare_source ftp://sourceware.org/pub/newlib $NEWLIBVER tar.gz
+
+        log_msg "patching newlib to automatically determine _LDBL_EQ_DBL"
+        pushd $ROOTDIR/cross-toolchain/$NEWLIBVER > /dev/null
+        patch  -p1 -i ../../newlib.patch
+        popd > /dev/null
+    fi
+
+    prepare_source ftp://ftp.gwdg.de/pub/misc/gcc/releases/$GCCVER $GCCVER tar.xz
+
+    prepare_source http://ftp.gnu.org/gnu/gdb $GDBVER tar.xz
+
+    log_msg "patching gdb to use libbcrypt"
+    pushd $ROOTDIR/cross-toolchain/$GDBVER > /dev/null
+    patch  -p1 -i ../../gdb.patch
+    popd > /dev/null
+}
+
+
+
+
+if [ "$ACTION" = "purge" ]; then
+    rm -rf $HOSTINSTALLPATH
+    rm $ROOTDIR/*.log
+    purge_pkg $BINUTILS
+    purge_pkg $GCCVER
+    purge_pkg $AVRLIBVER
+    purge_pkg $NEWLIBVER
+    purge_pkg $GDBVER
+    exit 0
+fi
+
+
+if [ "$ACTION" = "download" ]; then
+    download_all_pkg
+    exit 0
+fi
+
+
+
+export CFLAGS='-O2 -pipe'
+export CXXFLAGS='-O2 -pipe'
+export LDFLAGS='-s'
+export DEBUG_FLAGS=''
+
+
+if [ "$TARGETARCHITECTURE" = "arm-none-eabi" ]; then
+        MACHINEFLAGS="--with-cpu=cortex-m4 --with-cpu=cortex-m3 --with-fpu=fpv4-sp-d16 --with-float=hard --with-float=softfp 
+-with-float=soft --with-mode=thumb"
+	GCCFLAGS=$MACHINEFLAGS
+	BINUTILSFLAGS=$MACHINEFLAGS
+	LIBCFLAGS=$MACHINEFLAGS
+	GDBFLAGS=$MACHINEFLAGS
+fi
+
+
+
+
+
+# -------------------------------------------------------------------------------------------
+log_msg " start of buildscript"
+
+
+log_msg " building on OS: $OS $VER for target architecture $TARGETARCHITECTURE"
+if [[ $OS = windows ]]; then
+	EXECUTEABLESUFFIX=".exe"
+	echo "ouch.. on windows"
+else
+	echo "not on windows"
+	EXECUTEABLESUFFIX=""
+fi
+
+
+cd $ROOTDIR/cross-toolchain
+
+
+# dl all sources and patch them if necessary
+download_all_pkg
+
+#-------------------------------- BINUTILS --------------------------------------------------
+# build binutils
+
+log_msg ">>>> build binutils"
+
+BINUTILSFLAGS+=" --target=$TARGETARCHITECTURE --prefix=$HOSTINSTALLPATH/" 
+
+#LDFLAGS=-Wl,-rpath=$(ORIGIN)/usr/lib/binutils/avr/git,--enable-new-dtags
+
+conf_compile_source $BINUTILS "$HOSTINSTALLPATH/bin/$TARGETARCHITECTURE-objcopy$EXECUTEABLESUFFIX" "$BINUTILSFLAGS"
+
+
+#--------------------------------- GCC ------------------------------------------------
+# build gcc
+
+log_msg ">>>> build gcc"
+
+
+pushd $ROOTDIR/cross-toolchain/$GCCVER > /dev/null
+if [ ! -d gmp ]; then
+    log_msg "fetching gcc prerequisites"
+    ./contrib/download_prerequisites
+fi
+popd > /dev/null
+
+
+GCCFLAGS+=" --target=$TARGETARCHITECTURE  \
+            --prefix=$HOSTINSTALLPATH/    \
+            --libexecdir=$HOSTINSTALLPATH/lib \
+            --enable-languages=c,c++      \
+            --enable-lto                  \
+            --with-newlib                 \
+            --disable-shared              \
+            --disable-decimal-float       \
+            --disable-libmudflap          \
+            --disable-libssp              \
+            --disable-libgomp             \
+            --disable-libquadmath         \
+            --disable-libstdcxx-pch       \
+            --disable-threads             \
+            --disable-tls                 \
+            --disable-nls                 \
+            --with-gnu-as                 \
+            --with-gnu-ld                 \
+            --disable-checking            \
+            --with-sysroot=$HOSTINSTALLPATH/$TARGETARCHITECTURE \
+            --without-headers"
+
+SOURCEPACKAGE=$GCCVER
+CONFIGURESTRING=$GCCFLAGS
+
+
+[ ! -d $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj ] && mkdir $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj
+
+pushd $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj > /dev/null
+
+log_msg "CCS sourcepackage= $SOURCEPACKAGE=$GCCVER"
+log_msg "CCS detect file= $DETECTFILE"
+log_msg "CCS cfgstring $CONFIGURESTRING"
+
+if [ ! -f config.status ]; then
+    log_msg "configuring $SOURCEPACKAGE"
+    ../configure $CONFIGURESTRING 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.log || exit 1
+    log_msg "configuring $SOURCEPACKAGE finished"
+else
+    log_msg "configuring $SOURCEPACKAGE skipped"
+fi
+
+log_msg "building $SOURCEPACKAGE"
+make -j $MAKEJOBS all-gcc 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.log || exit 1
+if [ $? -eq 0 ]; then
+    log_msg "building $SOURCEPACKAGE finished"
+else
+    log_err "building $SOURCEPACKAGE failed"
+fi
+
+log_msg "install $SOURCEPACKAGE"
+make install-gcc 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.log || exit 1
+log_msg "install $SOURCEPACKAGE finished"
+
+popd > /dev/null
+
+
+if [ "$TARGETARCHITECTURE" = "avr" ]; then
+    LIBCVER=$AVRLIBVER
+    #--------------------------------LIBC LIBAVR -------------------------------------------------
+    #build avr libc
+
+    log_msg ">>>> build avrlib"
+
+
+    LIBCFLAGS+=" --host=avr --prefix=$HOSTINSTALLPATH/"
+
+    conf_compile_source $AVRLIBVER "$HOSTINSTALLPATH/$TARGETARCHITECTURE/lib/libc.a" "$LIBCFLAGS"
+
+else
+    LIBCVER=$NEWLIBVER
+    #--------------------------------LIBC NEWLIB -------------------------------------------------
+    #build libc for other platforms
+
+    log_msg ">>>> build newlib"
+
+
+
+    LIBCFLAGS+=" --target=$TARGETARCHITECTURE \
+                 --prefix=$HOSTINSTALLPATH/ \
+                 --enable-newlib-reent-small \
+                 --disable-malloc-debugging \
+                 --enable-newlib-multithread \
+                 --disable-newlib-io-float \
+                 --disable-newlib-supplied-syscalls \
+                 --disable-newlib-io-c99-formats \
+                 --disable-newlib-mb \
+                 --disable-newlib-atexit-alloc \
+                 --disable-newlib-fvwrite-in-streamio  \
+                 --disable-newlib-fseek-optimization   \
+                 --disable-newlib-wide-orient          \
+                 --disable-newlib-unbuf-stream-opt     \
+                 --enable-target-optspace \
+                 --enable-newlib-nano-malloc           \
+                 --disable-shared \
+                 --enable-lite-exit                    \
+                 --enable-newlib-global-atexit         \
+       			 --enable-newlib-global-stdio-streams \
+                 --disable-nls                         \
+                 --enable-newlib-nano-formatted-io     \
+       			 --enable-newlib-retargetable-locking \
+                 --enable-static \
+                 --enable-newlib-nano-malloc \
+                 --enable-fast-install"
+
+BASE_CPPFLAGS="-pipe"
+BASE_LDFLAGS=
+BASE_CFLAGS_FOR_TARGET="-pipe -ffunction-sections -fdata-sections"
+BASE_CXXFLAGS_FOR_TARGET="-pipe -ffunction-sections -fdata-sections -fno-exceptions"
+export CPPFLAGS="${BASE_CPPFLAGS-} ${CPPFLAGS-}"
+export LDFLAGS="${BASE_LDFLAGS-} ${LDFLAGS-}"
+export CFLAGS_FOR_TARGET="-g -Os ${BASE_CFLAGS_FOR_TARGET-} ${CFLAGS_FOR_TARGET-}"
+
+
+    conf_compile_source $NEWLIBVER "$HOSTINSTALLPATH/$TARGETARCHITECTURE/lib/libc.a" "$LIBCFLAGS"
+
+fi
+
+
+#--------------------------------- GCC ------------------------------------------------
+# build gcc
+
+log_msg ">>>> build gcc stage 2"
+
+
+
+GCCFLAGS+=" --target=$TARGETARCHITECTURE  \
+            --prefix=$HOSTINSTALLPATH/    \
+            --libexecdir=$HOSTINSTALLPATH/lib \
+            --enable-languages=c,c++      \
+            --enable-lto                  \
+			--disable-libstdcxx-verbose \
+            --with-newlib                 \
+            --disable-shared              \
+            --disable-decimal-float       \
+            --disable-libmudflap          \
+            --disable-libssp              \
+            --disable-libgomp             \
+            --disable-libquadmath         \
+            --disable-libstdcxx-pch       \
+            --disable-threads             \
+            --disable-tls                 \
+            --disable-nls                 \
+            --with-gnu-as                 \
+            --with-gnu-ld                 \
+            --disable-checking            \
+			--with-headers=yes            \
+            --with-sysroot=$HOSTINSTALLPATH/$TARGETARCHITECTURE "
+
+SOURCEPACKAGE=$GCCVER
+CONFIGURESTRING=$GCCFLAGS
+
+
+[ ! -d $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj2 ] && mkdir $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj2
+
+pushd $ROOTDIR/cross-toolchain/$SOURCEPACKAGE/cross-chain-$TARGETARCHITECTURE-obj2 > /dev/null
+
+log_msg "CCS sourcepackage= $SOURCEPACKAGE=$GCCVER"
+log_msg "CCS cfgstring $CONFIGURESTRING"
+
+if [ ! -f config.status ]; then
+    log_msg "configuring $SOURCEPACKAGE"
+    ../configure $CONFIGURESTRING 2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.2.log || exit 1
+    log_msg "configuring $SOURCEPACKAGE finished"
+else
+    log_msg "configuring $SOURCEPACKAGE skipped"
+fi
+
+
+log_msg "building $SOURCEPACKAGE"
+make -j $MAKEJOBS  2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.2.log || exit 1
+if [ $? -eq 0 ]; then
+    log_msg "building $SOURCEPACKAGE finished"
+else
+    log_err "building $SOURCEPACKAGE failed"
+fi
+
+log_msg "install $SOURCEPACKAGE"
+make install  2>&1 | tee -a $ROOTDIR/$SOURCEPACKAGE.2.log || exit 1
+log_msg "install $SOURCEPACKAGE finished"
+
+popd > /dev/null
+
+
+
+#---------------------------------------------------------------------------------
+#build gdb
+
+log_msg ">>>> build gdb"
+
+
+
+
+GDBFLAGS+=" --target=$TARGETARCHITECTURE --prefix=$HOSTINSTALLPATH/"
+
+conf_compile_source $GDBVER "$HOSTINSTALLPATH/bin/$TARGETARCHITECTURE-gdb$EXECUTEABLESUFFIX" "$GDBFLAGS"
+
+
+#---------------------------------------------------------------------------------
+#build pio package
+
+#works only in bash
+PACKAGEVER=${GCCVER/#gcc-}
+
+if [[ $OS = windows* ]]; then 
+EXECUTEABLESUFFIX=".exe" 
+echo "on windows, copy mingw dlls"
+for DLLFILE in libgmp-10.dll libiconv-2.dll libintl-8.dll libwinpthread-1.dll libexpat-1.dll libzstd.dll
+do
+  cp  /mingw64/bin/$DLLFILE $HOSTINSTALLPATH/bin
+done
+
+cat >$HOSTINSTALLPATH/package.json <<EOFWINDOWSVARIANT
+{
+    "description": "$GCCVER $BINUTILS $LIBCVER $GDBVER",
+    "name": "toolchain-$TARGETARCHITECTURE-current",
+    "system": [
+        "windows",
+        "windows_amd64",
+        "windows_x86"
+    ],
+    "url": "https://github.com/haarer/toolchain68k",
+    "version": "$PACKAGEVER"
+}
+EOFWINDOWSVARIANT
+
+elif [[ $OS = raspian* ]]; then echo "on raspian"
+cat >$HOSTINSTALLPATH/package.json <<EOFRASPIVARIANT
+{
+    "description": "$GCCVER $BINUTILS $LIBCVER $GDBVER",
+    "name": "toolchain-$TARGETARCHITECTURE-current",
+    "system": [
+        "linux_armv6l",
+        "linux_armv7l",
+        "linux_armv8l"
+    ],
+    "url": "https://github.com/haarer/toolchain68k",
+    "version": "$PACKAGEVER"
+}
+EOFRASPIVARIANT
+
+else
+echo "on linux"
+cat >$HOSTINSTALLPATH/package.json <<EOFLINUXVARIANT
+{
+    "description": "$GCCVER $BINUTILS $LIBCVER $GDBVER",
+    "name": "toolchain-$TARGETARCHITECTURE-current",
+    "system": [
+        "linux_x86_64"
+    ],
+    "url": "https://github.com/haarer/toolchain68k",
+    "version": "$PACKAGEVER"
+}
+EOFLINUXVARIANT
+
+fi
+
+log_msg "packaging.."
+cd $HOSTINSTALLPATH ;tar czf ../toolchain-$TARGETARCHITECTURE-$OS-$GCCVER.tar.gz * ; cd ..
+sha1sum toolchain-$TARGETARCHITECTURE-$OS-$GCCVER.tar.gz
+
+

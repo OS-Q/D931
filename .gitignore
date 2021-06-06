@@ -1,8 +1,7 @@
-*.pyc
-*.lst
-*.tmp
-*.DS_Store
-*desktop*
+cross-toolchain
+toolchain-*-current
+buildlog.txt
 *.o
-.pio/
-.vscode/
+*.map
+*.lst
+*.elf
